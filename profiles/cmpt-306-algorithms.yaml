@@ -1,0 +1,27 @@
+canvas_id: 3506954
+slug_kebab: cmpt-306-algorithms
+slug_camel: CMPT306_Algorithms
+strategy: external_site
+
+external_site:
+  base_url: https://cs.westminsteru.edu/~jingsai/courses/CMPT306/
+  # Each pattern: regex matched against assignment name (lowercased).
+  # `candidates` are tried in order; first match wins. {n} is the regex group(1).
+  # `starters` are extra files copied alongside the assignment .md (binary, no md transform).
+  assignment_patterns:
+    - regex: "^lab(\\d+)$"
+      candidates:
+        - "labs/lab{n}/index.html"
+        - "labs/lab{n}/lab{n}.pdf"
+      starters:
+        - "labs/lab{n}/lab{n}.tar"
+    - regex: "^lab(\\d+)\\s+extra"
+      candidates:
+        - "labs/lab{n}_extra/index.html"
+        - "labs/lab{n}-extra/index.html"
+        - "labs/lab{n}extra/index.html"
+    - regex: "^hw(\\d+)$"
+      candidates:
+        - "homework/hw{n}/index.html"
+        - "homework/hw{n}/hw{n}.pdf"
+  handouts_dir: handouts
