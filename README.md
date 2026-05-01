@@ -2,12 +2,6 @@
 
 A personal IaC + Python pipeline that archives Canvas LMS courses into per-course private GitHub repositories. One command per course: provision the repo with Terraform, extract assignments and supporting material via the Canvas API (with optional fetch of instructor-hosted external content), commit locally, push when approved.
 
-## Why this exists
-
-I am graduating with a CS degree and wanted a permanent, greppable archive of every course I have taken: the assignments I did, the prompts that defined them, and the supporting material the instructor distributed. Canvas does not provide an export that captures this cleanly across the variation in how each instructor uses the platform.
-
-So I built one. It started as a one-off Python script for a single course and grew into a small architecture that handles the diversity of how different professors use Canvas (descriptions in the assignment field, prompts on a personal external site, PDFs only, mixed setups). It is also where I put hands-on time on Terraform and the GitHub provider, so the next role I step into is not the first place I touch that stack.
-
 ## Architecture
 
 Two halves work together:
