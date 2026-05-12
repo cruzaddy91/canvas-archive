@@ -1,0 +1,23 @@
+canvas_id: 3596470
+slug_kebab: cmpt-328-comp-arch
+slug_camel: CMPT328_CompArch
+strategy: external_site
+
+# Kathy hosts the actual problem prompts on her own server. The Canvas
+# descriptions only contain submission rubrics, not the problems themselves.
+#
+# IMPORTANT: Kathy's pages render their tables, points, and answer slots via
+# JavaScript at runtime. Plain wget (the default external_site mirror) only
+# captures the JS-stub HTML and produces near-empty markdown.
+#
+# Workaround until canvas-archive grows a JS-render strategy:
+#   scripts/render_chrome_pages.sh <base_url> <target_dir>
+# fetches each homework page via headless Chrome and overwrites the canvas-only
+# stubs with the fully materialized prompts.
+external_site:
+  base_url: https://cs.westminsteru.edu/~kathy/2026spring/cmpt328/
+  assignment_patterns:
+    - regex: "^homework (\\d+\\.\\d+)$"
+      candidates:
+        - "homework{n}.html"
+        - "homework{n}/index.html"
