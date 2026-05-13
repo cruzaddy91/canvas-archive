@@ -13,7 +13,7 @@
 # Example:
 #   scripts/render_chrome_pages.sh \
 #     https://cs.westminsteru.edu/~kathy/2026spring/cmpt328/ \
-#     ~/Workspace/school/CMPT-328_CompArchitec/assignments/Homework
+#     ~/Workspace/school/cmpt-328-comp-arch/assignments/Homework
 set -euo pipefail
 
 BASE_URL="${1:-}"
