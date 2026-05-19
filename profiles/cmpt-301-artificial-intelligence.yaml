@@ -1,0 +1,58 @@
+canvas_id: 3521378
+slug_kebab: cmpt-301-artificial-intelligence
+strategy: canvas_only
+
+# Course home (front page) schedule table: files linked in the "Assignments" column.
+# See https://westminster.instructure.com/courses/3521378
+assignment_files_from_course_home_table: true
+course_home_merge_syllabus_body: true
+
+# Canvas home embeds the weekly grid as an iframe; the API front page body is only that iframe tag.
+# Merge this page HTML so the extractor can see the same table the browser shows.
+# Keep the calendar URL first: relative ./assignments/... links in that HTML resolve against it.
+course_home_supplement_html_urls:
+  - https://cs.westminstercollege.edu/~jingsai/courses/CMPT301/calendar_dyn
+
+# Treat these extensions as downloadable starters from the schedule (includes Pacman .htm pages).
+course_home_external_file_extensions:
+  - .ipynb
+  - .py
+  - .zip
+  - .htm
+  - .html
+
+# Starter notebooks on the department server (linked from the course home table Assignments column).
+course_home_external_download_hosts:
+  - cs.westminstercollege.edu
+  - cs.westminsteru.edu
+
+# Same-week **Activities** cell disambiguates these names from other Canvas assignments (for example ``vacuum`` vs Vacuum Agent).
+course_home_activity_row_priority_filename_stems:
+  - vacuum
+  - BlindDog
+
+# After downloading external ``.htm`` / ``.html`` starters, fetch same-row ``<a href>`` targets (for example ``.zip`` / ``.ipynb`` on the spec host or HTTPS mirrors).
+course_home_follow_links_in_external_html: true
+course_home_external_html_follow_extensions:
+  - .zip
+  - .ipynb
+  - .py
+
+# Developer mode: relaxes schedule-table external host matching to any http(s) host for allowed
+# file extensions. Set to false when the archive is finished so only allowlisted hosts match.
+# Optional explicit override without developer_mode: course_home_external_starters_allow_any_https_host
+developer_mode: true
+
+# Starter .ipynb / .py often appear as Canvas Files in the module list above the assignment,
+# while the rich-text description is empty. Refetch each assignment from the show API in
+# case the index payload omits HTML; then pull linked files from description and from modules.
+download_linked_canvas_files: true
+refetch_assignment_description: true
+module_files_before_assignment: true
+module_file_lookback_items: 20
+module_files_max_per_assignment: 15
+
+# Drop stale files under assignments/<group>/<assignment-dir>/canvas/ when the current run resolves a different file set (avoids duplicate names).
+prune_orphan_canvas_files: true
+
+# Activities are often Google Docs; keeping the outbound link in the .md is enough.

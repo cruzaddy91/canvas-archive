@@ -1,0 +1,10 @@
+{
+  "courses": {
+    "cmpt-301-artificial-intelligence": {
+      "canvas_id": 3521378,
+      "code": "CMPT-301-01",
+      "name": "Artificial Intelligence",
+      "term": "25SP"
+    }
+  }
+}

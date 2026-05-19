@@ -1,7 +1,8 @@
 canvas_id: 3596470
 slug_kebab: cmpt-328-comp-arch
-slug_camel: CMPT328_CompArch
 strategy: external_site
+
+# UAT: docs/UAT-wave-202-306-328.md and docs/CMPT328-external-site-and-js-render.md
 
 # Kathy hosts the actual problem prompts on her own server. The Canvas
 # descriptions only contain submission rubrics, not the problems themselves.

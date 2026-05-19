@@ -33,6 +33,7 @@ name = "canvas-archive"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "beautifulsoup4" },
     { name = "canvasapi" },
     { name = "markdownify" },
     { name = "pypdf" },
@@ -42,6 +43,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "beautifulsoup4", specifier = ">=4.12" },
     { name = "canvasapi", specifier = ">=3.6.0" },
     { name = "markdownify", specifier = ">=1.2.2" },
     { name = "pypdf", specifier = ">=6.10.2" },

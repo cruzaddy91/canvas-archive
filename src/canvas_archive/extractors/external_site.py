@@ -3,9 +3,13 @@ from __future__ import annotations
 import re
 import shutil
 import subprocess
+import urllib.error
+import urllib.request
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
+
+_WGET_USER_AGENT = "canvas-archive/personal-student-archive"
 
 from pypdf import PdfReader
 
@@ -14,7 +18,26 @@ from .base import ExtractResult
 from .canvas_only import PLACEHOLDER, CanvasOnlyExtractor
 
 
-def _mirror(base_url: str, out_dir: Path) -> None:
+def _get_base_url_http_status(base_url: str) -> tuple[int | None, str]:
+    """Single GET for diagnostics when the mirror is empty (same UA as wget)."""
+    req = urllib.request.Request(
+        base_url,
+        headers={"User-Agent": _WGET_USER_AGENT},
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=25) as resp:
+            return int(getattr(resp, "status", 200) or 200), ""
+    except urllib.error.HTTPError as e:
+        return int(e.code), (e.reason or "").strip()
+    except urllib.error.URLError as e:
+        reason = getattr(e, "reason", e)
+        return None, str(reason)
+    except Exception as e:
+        return None, str(e)
+
+
+def _mirror(base_url: str, out_dir: Path) -> tuple[int, int]:
+    """Run wget mirror; return (file_count, total_bytes)."""
     domain = urlparse(base_url).netloc
     if not domain:
         raise SystemExit(f"could not parse domain from {base_url!r}")
@@ -25,7 +48,7 @@ def _mirror(base_url: str, out_dir: Path) -> None:
         "--convert-links", "--page-requisites",
         "--html-extension", "--adjust-extension",
         f"--domains={domain}",
-        "--user-agent=canvas-archive/personal-student-archive",
+        f"--user-agent={_WGET_USER_AGENT}",
         "--wait=0.5", "--random-wait", "--no-verbose",
         "--directory-prefix", str(out_dir),
         base_url,
@@ -38,6 +61,7 @@ def _mirror(base_url: str, out_dir: Path) -> None:
     files = [p for p in out_dir.rglob("*") if p.is_file()]
     total = sum(p.stat().st_size for p in files)
     print(f"  mirrored {len(files)} files, {total / 1024**2:.2f} MB")
+    return (len(files), total)
 
 
 def _find_course_root(external: Path, base_url: str) -> Path | None:
@@ -118,17 +142,27 @@ class ExternalSiteExtractor:
             return result
 
         mirror_root = out_dir / "external_content"
-        _mirror(base_url, mirror_root)
+        n_files, _n_bytes = _mirror(base_url, mirror_root)
 
         course_root = _find_course_root(mirror_root, base_url)
         if course_root is None:
             print("  [warn] could not locate course root in mirror; aborting enrich")
+            if n_files == 0:
+                code, detail = _get_base_url_http_status(base_url)
+                if code is not None:
+                    extra = f" ({detail})" if detail else ""
+                    print(
+                        f"  [diag] GET {base_url} -> HTTP {code}{extra} "
+                        "(empty mirror often means the seed URL is blocked or wrong)"
+                    )
+                else:
+                    print(f"  [diag] GET {base_url} failed: {detail}")
             shutil.rmtree(mirror_root, ignore_errors=True)
             return result
         print(f"  course root: {course_root}")
 
         patterns = site.get("assignment_patterns", [])
-        result.assignments_enriched = self._match_and_embed(course_root, base_url, out_dir, patterns)
+        result.assignments_enriched += self._match_and_embed(course_root, base_url, out_dir, patterns)
         result.starters_copied = self._copy_starters(course_root, out_dir, patterns)
 
         handouts_dir = site.get("handouts_dir")

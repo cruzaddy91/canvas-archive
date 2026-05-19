@@ -1,5 +1,51 @@
 # canvas-archive
 
+<p align="center">
+  <a href="../../automation/workspace-standards/README.md"><img src="https://img.shields.io/badge/docs-workspace--standards-0369a1?style=flat-square" alt="Workspace standards" /></a>
+  <a href="../../automation/templates/github-markdown/DOCUMENT_TEMPLATE.md"><img src="https://img.shields.io/badge/format-DOCUMENT__TEMPLATE-555555?style=flat-square" alt="Document template" /></a>
+</p>
+
+<p align="center"><strong>README</strong> · <code>portfolio/canvas-archive/README.md</code></p>
+
+---
+
+## Contents
+
+| Section | Purpose |
+| :-- | :-- |
+| [Overview](#overview) | Audience, goal, and scope |
+| [Workflow](#workflow) | Procedures and checklists |
+| [Deep dive](#deep-dive) | Prior README text preserved below |
+| [Architecture](#architecture) | Context diagram |
+| [References](#references) | Links to workspace canon |
+
+---
+
+## Overview
+
+| Field | Value |
+| :-- | :-- |
+| **Audience** | Readers navigating this repository area |
+| **Goal** | Document layout, behavior, or pointers for this folder |
+| **Owner** | Repository maintainer |
+
+> [!NOTE]
+> This file follows the workspace README shell. Edit **Overview** and **Workflow** above the preserved block, or revise content inside **Deep dive**.
+
+---
+
+## Workflow
+
+- [ ] After substantive edits, confirm the **Deep dive** preserved section still matches reality.
+- [ ] Run `~/Workspace/automation/ssvc/validate.sh` when changing Markdown under umbrella default lint paths.
+
+---
+
+## Deep dive
+
+<details>
+<summary><strong>Prior README content (preserved)</strong></summary>
+
 A personal IaC + Python pipeline that archives Canvas LMS courses into per-course private GitHub repositories. One command per course: provision the repo with Terraform, extract assignments and supporting material via the Canvas API (with optional fetch of instructor-hosted external content), commit locally, push when approved.
 
 ## Architecture
@@ -16,7 +62,7 @@ The boundary is intentional. Dynamic discovery lives in Python, declarative infr
 - Python 3.12, [uv](https://github.com/astral-sh/uv) for project and dependency management
 - [canvasapi](https://github.com/ucfopen/canvasapi), [markdownify](https://pypi.org/project/markdownify/), BeautifulSoup, [pypdf](https://pypi.org/project/pypdf/) for Canvas REST and content extraction
 - [pyyaml](https://pyyaml.org/) for per-course profile loading
-- Terraform 1.15 with the [integrations/github](https://registry.terraform.io/providers/integrations/github/latest) provider v6
+- Terraform 1.6 or newer with the [integrations/github](https://registry.terraform.io/providers/integrations/github/latest) provider v6
 - Git LFS for binary content (lab starter `.tar` files, handout `.pdf` files)
 - wget for the optional external-site mirror step
 
@@ -49,11 +95,18 @@ cp .env.example .env
 # 3. List your Canvas courses
 uv run canvas-archive list
 
-# 4. Run the pipeline on one course
+# 4a. (Recommended) Merge every profiled course into Terraform variables, then provision repos only
+uv run canvas-archive sync-tfvars
+uv run canvas-archive terraform-apply
+
+# 4b. Or copy the example tfvars and edit by hand before your first apply
+cp infra/courses.auto.tfvars.example.json infra/courses.auto.tfvars.json
+
+# 5. Run the pipeline on one course
 #    (provisions repo, extracts content, commits locally; no push)
 uv run canvas-archive run <canvas_id>
 
-# 5. Inspect the local archive, then push when ready
+# 6. Inspect the local archive, then push when ready
 uv run canvas-archive push <canvas_id>
 ```
 
@@ -66,7 +119,6 @@ For courses where the instructor distributes the actual prompts on their own web
 ```yaml
 canvas_id: 3506954
 slug_kebab: cmpt-306-algorithms
-slug_camel: CMPT306_Algorithms
 strategy: external_site
 
 external_site:
@@ -108,3 +160,33 @@ A small but real demonstration of:
 ## License
 
 MIT. See [LICENSE](LICENSE).
+
+</details>
+
+---
+
+## Context diagram
+
+---
+
+## Markdown lint checklist (workspace)
+
+These align with the workspace [`.markdownlint.json`](../../.markdownlint.json) when that file is reachable from this path (nested repos often pick up config via guardrail hooks walking up to the workspace root).
+
+- **Fenced code blocks:** declare a language (`bash`, `text`, `mermaid`, …).
+- **Headings and lists:** keep one blank line after a heading before lists or body text.
+- **Tables:** align pipes with the header row.
+
+---
+
+## References
+
+| Resource | Notes |
+| :-- | :-- |
+| [DOCUMENT_TEMPLATE.md](../../automation/templates/github-markdown/DOCUMENT_TEMPLATE.md) | Canonical GitHub Markdown shell |
+| [Workspace standards README.md](../../automation/workspace-standards/README.md) | Bronze / Silver / Gold rubric |
+| [CLAUDE.md](../../CLAUDE.md) | Workspace index |
+
+---
+
+<!-- readme-normalize: workspace-template v1 -->

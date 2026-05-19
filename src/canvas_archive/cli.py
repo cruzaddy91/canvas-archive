@@ -9,7 +9,16 @@ import yaml
 
 from .core.canvas import get_canvas
 from .core.git_ops import push_and_verify
-from .pipeline import EXTRACTS_ROOT, run_pipeline, resolve_meta
+from .assignment_md_verify import exit_if_assignment_md_issues
+from .pipeline import (
+    EXTRACTS_ROOT,
+    local_archive_path,
+    run_pipeline,
+    resolve_meta,
+    sync_tfvars_from_profiles,
+    terraform_apply,
+    terraform_init,
+)
 from .profiles import find_profile_by_id, list_profiles
 
 
@@ -64,12 +73,36 @@ def cmd_show_profile(args: argparse.Namespace) -> None:
     print(yaml.safe_dump(profile, sort_keys=False))
 
 
+def cmd_sync_tfvars(args: argparse.Namespace) -> None:
+    n_used, n_skip, path = sync_tfvars_from_profiles(prune=args.prune)
+    mode = "prune" if args.prune else "merge"
+    print(f"sync-tfvars ({mode}): {n_used} course(s) from profiles -> {path}")
+    if n_skip:
+        print(f"  skipped {n_skip} profile file(s)")
+
+
+def cmd_terraform_apply(args: argparse.Namespace) -> None:
+    print("terraform init …")
+    terraform_init()
+    print("terraform apply …")
+    terraform_apply()
+    print("done (GitHub repos reconciled for every entry in courses.auto.tfvars.json)")
+
+
+def cmd_verify_assignments_md(args: argparse.Namespace) -> None:
+    canvas = get_canvas()
+    course = canvas.get_course(args.canvas_id)
+    profile = find_profile_by_id(args.canvas_id) or {"strategy": "canvas_only"}
+    meta = resolve_meta(course, profile)
+    exit_if_assignment_md_issues(local_archive_path(meta))
+
+
 def cmd_push(args: argparse.Namespace) -> None:
     canvas = get_canvas()
     course = canvas.get_course(args.canvas_id)
     profile = find_profile_by_id(args.canvas_id) or {"strategy": "canvas_only"}
     meta = resolve_meta(course, profile)
-    local_dir = EXTRACTS_ROOT / meta["slug_camel"]
+    local_dir = local_archive_path(meta)
     if not (local_dir / ".git").exists():
         sys.exit(f"no git repo at {local_dir}. Run `canvas-archive run {args.canvas_id}` first.")
     push_and_verify(local_dir)
@@ -95,9 +128,40 @@ def main() -> None:
     p_show.add_argument("canvas_id", type=int)
     p_show.set_defaults(fn=cmd_show_profile)
 
+    p_sync = sub.add_parser(
+        "sync-tfvars",
+        help="rewrite infra/courses.auto.tfvars.json from profiles/*.yaml + Canvas metadata",
+    )
+    p_sync.add_argument(
+        "--prune",
+        action="store_true",
+        help="drop tfvars entries that are not in any profile (default: merge with existing)",
+    )
+    p_sync.set_defaults(fn=cmd_sync_tfvars)
+
+    p_tf = sub.add_parser(
+        "terraform-apply",
+        help="terraform init + apply only (no extract; uses courses.auto.tfvars.json)",
+    )
+    p_tf.set_defaults(fn=cmd_terraform_apply)
+
     p_push = sub.add_parser("push", help="push existing local commit to remote")
     p_push.add_argument("canvas_id", type=int)
     p_push.set_defaults(fn=cmd_push)
+
+    p_verify_am = sub.add_parser(
+        "verify-assignments-md",
+        help="fail if any assignments/**/*.md contains data: URIs or huge lines",
+    )
+    p_verify_am.add_argument("canvas_id", type=int)
+    p_verify_am.set_defaults(fn=cmd_verify_assignments_md)
+
+    p_verify_hw = sub.add_parser(
+        "verify-homework-md",
+        help="alias for verify-assignments-md",
+    )
+    p_verify_hw.add_argument("canvas_id", type=int)
+    p_verify_hw.set_defaults(fn=cmd_verify_assignments_md)
 
     args = parser.parse_args()
     args.fn(args)

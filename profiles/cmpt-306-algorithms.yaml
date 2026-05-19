@@ -1,7 +1,8 @@
 canvas_id: 3506954
 slug_kebab: cmpt-306-algorithms
-slug_camel: CMPT306_Algorithms
 strategy: external_site
+
+# UAT: docs/UAT-wave-202-306-328.md — validate assignment_patterns against live Canvas titles after each term.
 
 external_site:
   base_url: https://cs.westminsteru.edu/~jingsai/courses/CMPT306/

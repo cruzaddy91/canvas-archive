@@ -1,0 +1,17 @@
+canvas_id: 3438320
+slug_kebab: cmpt-201-intro-to-computer-science
+strategy: canvas_only
+
+# Canvas homework descriptions link to full writeups on the department server.
+# Merge the first allowlisted http(s) URL found in the HTML description (anchor or bare URL).
+follow_description_links:
+  host_allowlist:
+    - cs.westminstercollege.edu
+    - cs.westminsteru.edu
+  only_assignment_groups:
+    - homework
+  pause_seconds_between_requests: 0.35
+
+# When the Canvas HTML description links to /courses/.../files/..., download those files
+# next to the assignment Markdown (under ``assignments/<group>/<assignment-dir>/canvas/``).
+download_linked_canvas_files: true
