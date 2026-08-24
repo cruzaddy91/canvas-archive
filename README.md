@@ -17,7 +17,6 @@
 | [Workflow](#workflow) | Procedures and checklists |
 | [Deep dive](#deep-dive) | Prior README text preserved below |
 | [Architecture](#architecture) | Context diagram |
-| [References](#references) | Links to workspace canon |
 
 ---
 
@@ -169,24 +168,10 @@ MIT. See [LICENSE](LICENSE).
 
 ---
 
-## Markdown lint checklist (workspace)
-
-These align with the workspace [`.markdownlint.json`](../../.markdownlint.json) when that file is reachable from this path (nested repos often pick up config via guardrail hooks walking up to the workspace root).
-
-- **Fenced code blocks:** declare a language (`bash`, `text`, `mermaid`, …).
-- **Headings and lists:** keep one blank line after a heading before lists or body text.
-- **Tables:** align pipes with the header row.
-
----
-
-## References
-
-| Resource | Notes |
-| :-- | :-- |
-| [DOCUMENT_TEMPLATE.md](../../automation/templates/github-markdown/DOCUMENT_TEMPLATE.md) | Canonical GitHub Markdown shell |
-| [Workspace standards README.md](../../automation/workspace-standards/README.md) | Bronze / Silver / Gold rubric |
-| [CLAUDE.md](../../CLAUDE.md) | Workspace index |
-
----
-
-<!-- readme-normalize: workspace-template v1 -->
+<!-- readme-normalize: workspace-template public-v1 -->
+<!--
+  PUBLIC repo. The v1 workspace shell's "Markdown lint checklist" and
+  "References" sections were removed: every link in them was relative into
+  ../../automation/ and ../../CLAUDE.md, which resolve inside ~/Workspace and
+  404 on github.com. Do not re-apply the v1 shell here.
+-->
