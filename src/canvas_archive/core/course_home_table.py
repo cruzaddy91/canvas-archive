@@ -411,8 +411,21 @@ def _activities_column_index(header_row: Tag) -> int | None:
     return None
 
 
-def _assignments_column_index(header_row: Tag) -> int | None:
+def _assignments_column_index(header_row: Tag, profile: Profile | None = None) -> int | None:
+    override = (profile or {}).get("course_home_assignments_column_header")
     cells = header_row.find_all(["th", "td"])
+    if override:
+        # Explicit opt-in for headers that never say "assignment" at all (see
+        # DATA 370: "Labs/Homework/Project"). Guessing more synonyms into the
+        # keyword match below only postpones the same problem to the next
+        # course with its own wording; a declared header is unambiguous and
+        # carries no risk of matching the wrong column on a course that
+        # never asked for it.
+        target = str(override).strip().lower()
+        for i, cell in enumerate(cells):
+            if cell.get_text(" ", strip=True).strip().lower() == target:
+                return i
+        return None
     for i, cell in enumerate(cells):
         text = cell.get_text(" ", strip=True).lower()
         if "activities" in text and "assignment" not in text:
@@ -422,6 +435,75 @@ def _assignments_column_index(header_row: Tag) -> int | None:
         if "assignment" in text:
             return i
     return None
+
+
+def _row_text_context_enabled(profile: Profile) -> bool:
+    """Opt-in: merge a matched schedule row's own cell text into the assignment's
+    .md as context, for courses (e.g. Jingsai's DATA 220) where the Assignments
+    column links straight back to Canvas rather than to a downloadable file, so
+    there is nothing for the existing file-discovery path to find. Off by
+    default so already-verified profiles (cmpt-301, cmpt-306, cmpt-328) are
+    untouched."""
+    return bool(profile.get("course_home_row_text_context"))
+
+
+def _header_labels(header_row: Tag) -> list[str]:
+    return [c.get_text(" ", strip=True) for c in header_row.find_all(["th", "td"])]
+
+
+# Columns whose text is index/date noise, not assignment context.
+_ROW_CONTEXT_SKIP_HEADERS = frozenset({"index", "week", "week-date", "date"})
+
+
+def _row_context_text(cells: list[Tag], headers: list[str], assignments_col: int) -> str:
+    """``**Header:** cell text`` per non-empty, non-noise cell in a schedule row,
+    the Assignments column's own cell excluded (its links are already captured
+    elsewhere; repeating its text here would just duplicate a bare Canvas link)."""
+    lines: list[str] = []
+    for i, cell in enumerate(cells):
+        if i == assignments_col:
+            continue
+        header = headers[i] if i < len(headers) else ""
+        if header.strip().lower() in _ROW_CONTEXT_SKIP_HEADERS:
+            continue
+        text = cell.get_text(" ", strip=True)
+        if not text:
+            continue
+        label = header or f"Column {i + 1}"
+        lines.append(f"**{label}:** {text}")
+    return "\n".join(lines)
+
+
+_LEADING_NUMBER_RE = re.compile(r"^\s*0*(\d+)[.\s)]")
+
+
+def _leading_number(text: str) -> int | None:
+    """Leading integer from a label, ignoring padding zeros and the punctuation
+    that follows it: "05 R module" -> 5, "5. Manipulating data" -> 5, "Test 1"
+    -> None (the number is not in leading position, which is deliberate: "Test
+    1" and "Test 5" would otherwise collide with unrelated item 1 or 5 in a
+    differently-numbered series)."""
+    m = _LEADING_NUMBER_RE.match(text or "")
+    return int(m.group(1)) if m else None
+
+
+def _numeric_match_enabled(profile: Profile) -> bool:
+    """Opt-in fallback for schedule labels that share a leading number with the
+    real Canvas assignment name but nothing else (see Jingsai's DATA 220:
+    calendar says "05 R module (due 10/1)", Canvas says "5. Manipulating
+    data", direct links point at a stale/different course's assignment ids
+    entirely). Separate flag from course_home_row_text_context because the
+    risk profile differs, a numeric match can be wrong in a way a name
+    match cannot (two unrelated series both starting their own "1")."""
+    return bool(profile.get("course_home_row_numeric_match"))
+
+
+def _match_assignment_id_by_leading_number(text: str, slug_to_id: dict[str, int]) -> int | None:
+    n = _leading_number(text)
+    if n is None:
+        return None
+    matches = {aid for name, aid in slug_to_id.items() if _leading_number(name) == n}
+    return next(iter(matches)) if len(matches) == 1 else None
 
 
 def _assignments_column_index_by_starter_density(table: Tag, profile: Profile) -> int | None:
@@ -449,6 +531,10 @@ def _assignments_column_index_by_starter_density(table: Tag, profile: Profile) -
 class HomeTableRefs:
     canvas_by_assignment: dict[int, list[tuple[int, int]]] = field(default_factory=dict)
     external_urls_by_assignment: dict[int, list[str]] = field(default_factory=dict)
+    # Schedule-row text (Topics, Slides/Material, etc.) for assignments whose real
+    # content is the row itself, not a file discoverable through it. See
+    # course_home_row_text_context in _parse_table.
+    row_context_by_assignment: dict[int, str] = field(default_factory=dict)
 
 
 def _dedupe_url_map(m: dict[int, list[str]]) -> dict[int, list[str]]:
@@ -476,7 +562,7 @@ def _parse_table(table: Tag, assignment_slug_to_id: dict[str, int] | None, profi
     data_start = 0
     header_row_for_activities: Tag | None = None
     for i, row in enumerate(rows):
-        col_idx = _assignments_column_index(row)
+        col_idx = _assignments_column_index(row, profile)
         if col_idx is not None:
             data_start = i + 1
             header_row_for_activities = row
@@ -495,6 +581,8 @@ def _parse_table(table: Tag, assignment_slug_to_id: dict[str, int] | None, profi
         if header_row_for_activities is not None
         else None
     )
+    headers = _header_labels(header_row_for_activities) if header_row_for_activities is not None else []
+    row_text_ctx = _row_text_context_enabled(profile)
 
     slug_map = assignment_slug_to_id or {}
 
@@ -507,6 +595,52 @@ def _parse_table(table: Tag, assignment_slug_to_id: dict[str, int] | None, profi
             continue
         cell = cells[col_idx]
         cell_html = str(cell)
+
+        if row_text_ctx:
+            # Resolved independent of _cell_starter_score below: a row whose
+            # Assignments cell links straight back to Canvas (no downloadable
+            # file at all, see DATA 220) still has an assignment id worth
+            # capturing context for, it just scores 0 on the file-discovery
+            # check that follows.
+            ctx_aid: int | None = None
+            for a_tag in cell.find_all("a", href=True):
+                am = _ASSIGN_RE.search(_href_attr(a_tag).replace("&amp;", "&"))
+                if am:
+                    candidate = int(am.group(1))
+                    # A calendar page can be a reused/static document whose
+                    # embedded links point at a different course offering
+                    # entirely (confirmed on DATA 220: the linked ids shared
+                    # zero overlap with the real course's own assignment
+                    # ids). An id this course's own roster does not contain
+                    # is worse than no id, it would silently attach this
+                    # row's context to nothing, so it is discarded here
+                    # rather than trusted.
+                    if not slug_map or candidate in slug_map.values():
+                        ctx_aid = candidate
+                    break
+            # Text-based fallbacks, tried in this order, when the link above
+            # was absent, untrusted, or simply is not how this course's
+            # calendar marks the row (see CMPT 311, where some rows are
+            # activity-only with no Assignments-cell content at all).
+            cell_text = cell.get_text(" ", strip=True)
+            if ctx_aid is None and slug_map and activity_text:
+                ids = _all_assignment_ids_for_file_label(activity_text, slug_map)
+                if len(ids) == 1:
+                    ctx_aid = ids[0]
+            if ctx_aid is None and slug_map and cell_text:
+                ids = _all_assignment_ids_for_file_label(cell_text, slug_map)
+                if len(ids) == 1:
+                    ctx_aid = ids[0]
+            if ctx_aid is None and slug_map and _numeric_match_enabled(profile):
+                ctx_aid = _match_assignment_id_by_leading_number(cell_text, slug_map)
+            if ctx_aid is not None:
+                ctx = _row_context_text(cells, headers, col_idx)
+                if ctx:
+                    existing = result.row_context_by_assignment.get(ctx_aid)
+                    result.row_context_by_assignment[ctx_aid] = (
+                        ctx if not existing else existing + "\n\n" + ctx
+                    )
+
         if _cell_starter_score(cell_html, profile) == 0:
             continue
 
@@ -605,6 +739,9 @@ def parse_course_home_tables(
             merged.canvas_by_assignment.setdefault(aid, []).extend(pairs)
         for aid, urls in part.external_urls_by_assignment.items():
             merged.external_urls_by_assignment.setdefault(aid, []).extend(urls)
+        for aid, ctx in part.row_context_by_assignment.items():
+            existing = merged.row_context_by_assignment.get(aid)
+            merged.row_context_by_assignment[aid] = ctx if not existing else existing + "\n\n" + ctx
     for aid in list(merged.canvas_by_assignment.keys()):
         merged.canvas_by_assignment[aid] = _dedupe_pairs(merged.canvas_by_assignment[aid])
     merged.external_urls_by_assignment = _dedupe_url_map(merged.external_urls_by_assignment)

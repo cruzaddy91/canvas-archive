@@ -1,0 +1,59 @@
+canvas_id: 3438226
+slug_kebab: data-220-introduction-to-statistics
+strategy: canvas_only
+
+# Jingsai's course home again, bare iframe over a personal calendar. One real quirk
+# found during the 2026-09-23 read-only audit: the iframe src Canvas itself serves
+# is broken (calendar1_dyn, 404s). The live page is calendar_dyn, no "1". Unlike
+# cmpt-311, this course's assignments mostly link BACK to Canvas rather than an
+# external spec page, so the row's own Topics/Materials columns are the real
+# context, not a followed link, which is exactly what
+# assignment_files_from_course_home_table already reads.
+assignment_files_from_course_home_table: true
+course_home_merge_syllabus_body: true
+
+# The Assignments/Tests column links straight back to Canvas, not to a file, so
+# the file-discovery path alone finds nothing here. The row's own Topics/
+# Slides-Material text is the real content. See
+# course_home_table.py:_row_text_context_enabled.
+course_home_row_text_context: true
+
+# 2026-09-23 audit finding: the calendar's own assignment links point at a
+# different course offering entirely (zero id overlap with this course's
+# real roster), so name matching is the only reliable path. The R Modules
+# group's own naming forces the numeric fallback specifically: calendar says
+# "05 R module (due 10/1)", Canvas says "5. Manipulating data", nothing in
+# common but the number. See course_home_table.py:_numeric_match_enabled.
+course_home_row_numeric_match: true
+
+course_home_supplement_html_urls:
+  - https://cs.westminsteru.edu/~jingsai/courses/DATA220/calendar_dyn
+
+course_home_external_file_extensions:
+  - .ipynb
+  - .py
+  - .zip
+  - .htm
+  - .html
+  - .pdf
+
+course_home_external_download_hosts:
+  - cs.westminsteru.edu
+  - cs.westminstercollege.edu
+
+course_home_follow_links_in_external_html: true
+course_home_external_html_follow_extensions:
+  - .zip
+  - .ipynb
+  - .py
+  - .pdf
+
+developer_mode: true
+
+download_linked_canvas_files: true
+refetch_assignment_description: true
+module_files_before_assignment: true
+module_file_lookback_items: 20
+module_files_max_per_assignment: 15
+
+prune_orphan_canvas_files: true

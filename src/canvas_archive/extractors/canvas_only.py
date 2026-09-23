@@ -24,6 +24,7 @@ PLACEHOLDER = "_No description provided in Canvas._"
 _APPENDIX_MARKERS = (
     "## Canvas file attachments",
     "## External starter files (instructor host)",
+    "## Course home schedule context",
 )
 
 
@@ -82,13 +83,17 @@ def _parse_course_home_table_stage(
     except (CanvasException, TypeError, ValueError, OSError) as e:
         print(f"  course_home_table: skipped ({e})")
         return None
-    if home and (home.canvas_by_assignment or home.external_urls_by_assignment):
+    if home and (home.canvas_by_assignment or home.external_urls_by_assignment or home.row_context_by_assignment):
         nc = len(home.canvas_by_assignment)
         ne = len(home.external_urls_by_assignment)
-        print(
+        nr = len(home.row_context_by_assignment)
+        msg = (
             f"  course_home_table: Canvas file refs for {nc} assignment id(s); "
             f"external starter URLs for {ne} assignment id(s)"
         )
+        if nr:
+            msg += f"; row context for {nr} assignment id(s)"
+        print(msg)
     elif home is not None:
         print(
             "  course_home_table: no starter links parsed (no <table> in visible HTML, "
@@ -225,7 +230,13 @@ class CanvasOnlyExtractor:
                     if n_ex > 0:
                         result.stage_assignments_with_external_downloads += 1
             text, enriched = assignment_md(a_desc, group_name, profile)
-            pieces = [p for p in (appendix, ext_appendix) if p]
+            row_ctx = home.row_context_by_assignment.get(int(a.id), "") if home else ""
+            ctx_appendix = (
+                "\n## Course home schedule context\n\n" + row_ctx + "\n" if row_ctx else ""
+            )
+            if row_ctx:
+                enriched = True
+            pieces = [p for p in (appendix, ext_appendix, ctx_appendix) if p]
             if pieces:
                 text = _strip_assignment_appendices(text.rstrip()) + "".join(pieces)
                 if not text.endswith("\n"):

@@ -1,0 +1,47 @@
+canvas_id: 3521670
+slug_kebab: data-360-data-science-with-python
+strategy: canvas_only
+
+# Jingsai's course home, same bare-iframe shape as cmpt-301/cmpt-311/data-220.
+# 2026-09-23 read-only audit: most assignments here link straight to .ipynb
+# notebooks (the notebook itself IS the spec, e.g. "Numpy Assignment" ->
+# ./assignments/numpy/Numpy_Assignment.ipynb), a few Quiz/Project items link
+# back to Canvas instead.
+assignment_files_from_course_home_table: true
+course_home_merge_syllabus_body: true
+
+# See course_home_table.py:_row_text_context_enabled. Catches rows whose
+# Assignments cell has no downloadable file at all (mirrors data-220).
+course_home_row_text_context: true
+
+course_home_supplement_html_urls:
+  - https://cs.westminstercollege.edu/~jingsai/courses/DATA360/calendar_dyn
+
+course_home_external_file_extensions:
+  - .ipynb
+  - .py
+  - .zip
+  - .htm
+  - .html
+  - .pdf
+
+course_home_external_download_hosts:
+  - cs.westminstercollege.edu
+  - cs.westminsteru.edu
+
+course_home_follow_links_in_external_html: true
+course_home_external_html_follow_extensions:
+  - .zip
+  - .ipynb
+  - .py
+  - .pdf
+
+developer_mode: true
+
+download_linked_canvas_files: true
+refetch_assignment_description: true
+module_files_before_assignment: true
+module_file_lookback_items: 20
+module_files_max_per_assignment: 15
+
+prune_orphan_canvas_files: true
