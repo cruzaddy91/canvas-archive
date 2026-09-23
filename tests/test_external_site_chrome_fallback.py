@@ -7,8 +7,16 @@ from canvas_archive.extractors.external_site import (
 )
 
 
+def _mock_status(code):
+    return patch(
+        "canvas_archive.extractors.external_site._get_base_url_http_status",
+        return_value=(code, ""),
+    )
+
+
 def test_render_via_chrome_returns_none_when_binary_missing():
-    result = _render_via_chrome("https://example.edu/hw1", chrome_path="/nowhere/chrome")
+    with _mock_status(200):
+        result = _render_via_chrome("https://example.edu/hw1", chrome_path="/nowhere/chrome")
     assert result is None
 
 
@@ -16,7 +24,8 @@ def test_render_via_chrome_returns_stdout_on_success(tmp_path):
     fake_chrome = tmp_path / "chrome.sh"
     fake_chrome.write_text("#!/bin/sh\necho '<html><body>rendered</body></html>'\n")
     fake_chrome.chmod(0o755)
-    result = _render_via_chrome("https://example.edu/hw1", chrome_path=str(fake_chrome))
+    with _mock_status(200):
+        result = _render_via_chrome("https://example.edu/hw1", chrome_path=str(fake_chrome))
     assert result is not None
     assert "rendered" in result
 
@@ -25,7 +34,8 @@ def test_render_via_chrome_returns_none_on_nonzero_exit(tmp_path):
     fake_chrome = tmp_path / "chrome.sh"
     fake_chrome.write_text("#!/bin/sh\nexit 1\n")
     fake_chrome.chmod(0o755)
-    result = _render_via_chrome("https://example.edu/hw1", chrome_path=str(fake_chrome))
+    with _mock_status(200):
+        result = _render_via_chrome("https://example.edu/hw1", chrome_path=str(fake_chrome))
     assert result is None
 
 
@@ -33,12 +43,26 @@ def test_render_via_chrome_returns_none_on_timeout(tmp_path):
     fake_chrome = tmp_path / "chrome.sh"
     fake_chrome.write_text("#!/bin/sh\nexit 0\n")
     fake_chrome.chmod(0o755)
-    with patch(
+    with _mock_status(200), patch(
         "canvas_archive.extractors.external_site.subprocess.run",
         side_effect=subprocess.TimeoutExpired(cmd="chrome", timeout=30),
     ):
         result = _render_via_chrome("https://example.edu/hw1", chrome_path=str(fake_chrome))
     assert result is None
+
+
+def test_render_via_chrome_rejects_non_200_status_without_launching_chrome():
+    """The actual bug this guards against: Chrome happily renders a server's
+    403 page as valid, non-empty HTML. cmpt-307's homework pages did exactly
+    this, "You don't have permission to access this resource" landed in the
+    archive dressed up as real content. A non-200 status must short-circuit
+    before Chrome ever launches."""
+    with _mock_status(403), patch(
+        "canvas_archive.extractors.external_site.subprocess.run"
+    ) as mock_run:
+        result = _render_via_chrome("https://example.edu/forbidden", chrome_path="/bin/echo")
+    assert result is None
+    mock_run.assert_not_called()
 
 
 def test_match_and_embed_via_chrome_writes_rendered_content(tmp_path):

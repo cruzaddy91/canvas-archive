@@ -1,0 +1,27 @@
+canvas_id: 3506965
+slug_kebab: cmpt-307-databases
+strategy: external_site
+
+# 2026-09-23 read-only audit: Kathy has no course-home calendar for this
+# course (front page is empty, unlike Jingsai's iframe pattern). She links
+# directly from individual Canvas assignment descriptions instead, to two
+# different things:
+#
+#   1. cs.westminsteru.edu/cmpt307/lab/lab/{uuid} - the interactive SQL Lab
+#      grading tool. Not mirrored: it is a live app, not a content page, and
+#      the Canvas description already says everything needed ("complete Lab
+#      N on SQL Lab, grade updates automatically"). Nothing to pull.
+#   2. cs.westminsteru.edu/~kathy/2024fall/cmpt307/homework_NN - real static
+#      spec pages, which the wget mirror below can actually reach.
+external_site:
+  base_url: https://cs.westminsteru.edu/~kathy/2024fall/cmpt307/
+  # wget gets HTTP 403 on the base_url itself (not JS-rendering this time,
+  # the server appears to reject non-browser requests outright). Headless
+  # Chrome presents a real browser fingerprint and already proved it works
+  # around this shape of block for cmpt-328.
+  js_render_fallback: true
+  assignment_patterns:
+    - regex: "^homework (\\d+)$"
+      candidates:
+        - "homework_{n:0>2}.html"
+        - "homework_{n:0>2}"

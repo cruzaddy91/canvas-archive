@@ -33,7 +33,19 @@ def _render_via_chrome(url: str, chrome_path: str | None = None) -> str | None:
     development, and keeps the HTML-to-Markdown behavior identical to every
     other content path in this codebase rather than a second, separately
     tuned conversion.
+
+    Checks the real HTTP status before ever launching Chrome, rather than
+    trusting "Chrome produced some non-empty HTML" as success. `--dump-dom`
+    happily renders a server's 403 error page: it is valid, non-empty HTML,
+    just not the content anyone asked for. Found on cmpt-307: the base_url
+    directory rejects wget AND a real Chrome fingerprint alike (an access
+    restriction, not the JS-rendering gap this fallback was built for), and
+    without this check the archive silently filled with "You don't have
+    permission to access this resource" dressed up as a homework spec.
     """
+    code, _detail = _get_base_url_http_status(url)
+    if code != 200:
+        return None
     chrome = chrome_path or os.environ.get("CHROME") or _DEFAULT_CHROME
     if not Path(chrome).exists():
         return None
