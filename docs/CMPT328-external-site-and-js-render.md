@@ -6,10 +6,10 @@ The [cmpt-328-comp-arch profile](../profiles/cmpt-328-comp-arch.yaml) uses
 `strategy: external_site`. The extractor mirrors the instructor `base_url`
 with `wget`, then matches Canvas assignment titles to paths under that mirror.
 
-Some homework HTML (notably Kathy’s pages referenced in the profile) **builds
+Some homework HTML (notably Kathy's pages referenced in the profile) **builds
 tables and prompts in the browser with JavaScript**. `wget` only saves the
-initial HTML shell, so Markdown conversion can look **empty or thin** compared
-to what you see in Chrome.
+initial HTML shell, so the mirror comes back empty and `course root` cannot
+be located (2026-05-14 UAT: `wget` exited 8, mirrored 0 files).
 
 ## Troubleshooting: wget exit 8 and zero files
 
@@ -32,39 +32,45 @@ approved export path).
 `external_site.base_url` in the profile after you confirm the live URL in a
 browser.
 
-The extractor now prints a **`[diag] GET ... -> HTTP ...`** line when the
-mirror is empty and the course root cannot be resolved, so you can see the
-status without a separate `curl` run.
+The extractor prints a **`[diag] GET ... -> HTTP ...`** line when the mirror
+is empty and the course root cannot be resolved, so you can see the status
+without a separate `curl` run.
 
-## Workarounds
+## Fix: `js_render_fallback`
 
-1. **Manual or scripted headless render**  
-   After a normal `canvas-archive run`, open the worst pages in a browser,
-   confirm they need JS, then replace the mirrored stubs with fully rendered
-   HTML (or exported PDF) using a **trusted local script** you control. The
-   profile comment historically pointed at `scripts/render_chrome_pages.sh`;
-   that script is **not shipped in this repo** today. If you add one, keep it
-   next to the profile and document the exact command line here.
+Set `external_site.js_render_fallback: true` on the profile (already set for
+this course). When the wget mirror comes back empty, the extractor falls
+back to fetching each matched candidate URL directly through headless
+Chrome (`--dump-dom`), which executes the page's JavaScript first, then runs
+the rendered DOM through the same `to_md()` conversion every other content
+path in this codebase uses. See
+`extractors/external_site.py:_render_via_chrome` and
+`_match_and_embed_via_chrome`.
 
-2. **Tighten `assignment_patterns`**  
-   When Canvas titles change spacing or punctuation, extend the regex or
-   `candidates` ladder in the profile so the mirror path resolves. Run
-   `uv run canvas-archive run 3596470` and inspect
-   `enriched N assignments from external site` in the log.
+This requires Chrome at the path in `$CHROME`, or the default macOS install
+location. No other setup, and no separate script to remember to run: a plain
+`uv run canvas-archive run 3596470` now falls back to the render automatically
+whenever the mirror is empty. Assignment content still fetched via wget on
+other profiles is untouched, since the fallback only engages when the mirror
+already failed to find a course root.
 
-3. **Prefer `canvas_only` extras when Canvas also exposes starters**  
-   If the instructor later puts PDFs or files in Canvas, you can merge
-   additional profile flags (for example `download_linked_canvas_files`)
-   without replacing the external_site mirror.
+Other options worth knowing, not needed for this course today:
+
+- **Tighten `assignment_patterns`.** When Canvas titles change spacing or
+  punctuation, extend the regex or `candidates` ladder in the profile so the
+  mirror path resolves. Run `uv run canvas-archive run 3596470` and inspect
+  `enriched N assignments` in the log.
+- **Prefer `canvas_only` extras when Canvas also exposes starters.** If the
+  instructor later puts PDFs or files in Canvas, merge additional profile
+  flags (for example `download_linked_canvas_files`) without replacing the
+  external_site mirror.
 
 ## UAT checklist (328)
 
-- [ ] `uv run canvas-archive run 3596470` completes; note `enriched` and
-  `copied starter` counts. If `wget` exits non-zero and `mirrored 0 files`,
-  fix TLS, robots, or `base_url` before expecting content (2026-05-14 UAT saw
-  exit 8 and empty mirror).
+- [ ] `uv run canvas-archive run 3596470` completes; note `enriched` count in
+  the `[fallback]` line.
 - [ ] Spot-check two homework `.md` files under the extract tree for readable
-  problem text.
-- [ ] If stubs are empty, run your headless render pass and re-run verify, or
-  attach PDFs manually and document in the archive README for that course
-  repo.
+  problem text, not a near-empty stub.
+- [ ] If a candidate still comes back empty, confirm the URL pattern in
+  `assignment_patterns` actually matches the live page (open it in a
+  browser), then re-run.

@@ -1,0 +1,11 @@
+# Repo archetype declaration. Read by automation/repo-audit/.
+# Declared, not detected: the repo says what it is, the audit never guesses.
+archetype: python-service
+ecosystem: python
+
+# Deviations are DECLARED, never silently tolerated. An empty list here means
+# every rule for python-service applies. infra/, profiles/, and scripts/ sit
+# alongside src/ and tests/ at the repo root; the archetype's own rules
+# (required_dirs, forbidden_at_root) don't forbid additional top-level
+# directories, so these are additive, not exceptions.
+exceptions: []

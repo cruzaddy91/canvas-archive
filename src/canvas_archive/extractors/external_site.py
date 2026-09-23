@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import re
 import shutil
 import subprocess
@@ -9,13 +10,52 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
-_WGET_USER_AGENT = "canvas-archive/personal-student-archive"
-
 from pypdf import PdfReader
 
 from ..core.markdown import to_md
 from .base import ExtractResult
 from .canvas_only import PLACEHOLDER, CanvasOnlyExtractor
+
+_WGET_USER_AGENT = "canvas-archive/personal-student-archive"
+_DEFAULT_CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+
+
+def _render_via_chrome(url: str, chrome_path: str | None = None) -> str | None:
+    """Fetch a URL's post-JS DOM via headless Chrome. None on any failure.
+
+    Exists because wget mirrors only the pre-render HTML stub for instructor
+    sites that build the page with JavaScript at load time (see CMPT 328 in
+    docs/UAT-wave-202-306-328.md: mirror reported 0 files, course root never
+    found). This replaces the one-off scripts/render_chrome_pages.sh, which
+    did the same fetch with a hardcoded "Homework N.M" filename pattern for a
+    single course. Reusing to_md() here instead of that script's pandoc
+    dependency keeps this to Chrome alone, already required for canvas-archive
+    development, and keeps the HTML-to-Markdown behavior identical to every
+    other content path in this codebase rather than a second, separately
+    tuned conversion.
+    """
+    chrome = chrome_path or os.environ.get("CHROME") or _DEFAULT_CHROME
+    if not Path(chrome).exists():
+        return None
+    try:
+        proc = subprocess.run(
+            [
+                chrome,
+                "--headless=new",
+                "--disable-gpu",
+                "--virtual-time-budget=6000",
+                "--dump-dom",
+                url,
+            ],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+    except (subprocess.TimeoutExpired, OSError):
+        return None
+    if proc.returncode != 0 or not proc.stdout.strip():
+        return None
+    return proc.stdout
 
 
 def _get_base_url_http_status(base_url: str) -> tuple[int | None, str]:
@@ -145,8 +185,10 @@ class ExternalSiteExtractor:
         n_files, _n_bytes = _mirror(base_url, mirror_root)
 
         course_root = _find_course_root(mirror_root, base_url)
+        patterns = site.get("assignment_patterns", [])
+
         if course_root is None:
-            print("  [warn] could not locate course root in mirror; aborting enrich")
+            print("  [warn] could not locate course root in mirror")
             if n_files == 0:
                 code, detail = _get_base_url_http_status(base_url)
                 if code is not None:
@@ -157,11 +199,23 @@ class ExternalSiteExtractor:
                     )
                 else:
                     print(f"  [diag] GET {base_url} failed: {detail}")
+
+            if not site.get("js_render_fallback"):
+                print(
+                    "  [skip] js_render_fallback not set on this profile; aborting enrich. "
+                    "If the empty mirror above is because the instructor site renders "
+                    "content with JavaScript, set external_site.js_render_fallback: true."
+                )
+                shutil.rmtree(mirror_root, ignore_errors=True)
+                return result
+
+            print("  [fallback] js_render_fallback set; rendering candidate URLs via headless Chrome")
+            result.assignments_enriched += self._match_and_embed_via_chrome(base_url, out_dir, patterns)
             shutil.rmtree(mirror_root, ignore_errors=True)
             return result
+
         print(f"  course root: {course_root}")
 
-        patterns = site.get("assignment_patterns", [])
         result.assignments_enriched += self._match_and_embed(course_root, base_url, out_dir, patterns)
         result.starters_copied = self._copy_starters(course_root, out_dir, patterns)
 
@@ -174,6 +228,40 @@ class ExternalSiteExtractor:
         shutil.rmtree(mirror_root, ignore_errors=True)
         print(f"  mirror deleted: {mirror_root}")
         return result
+
+    def _match_and_embed_via_chrome(self, base_url: str, out_dir: Path, patterns: list[dict]) -> int:
+        """Same name-to-content matching as _match_and_embed, but fetches each
+        candidate live via headless Chrome instead of reading it from a wget
+        mirror, for instructor sites wget cannot see content on at all."""
+        n = 0
+        for md in sorted((out_dir / "assignments").rglob("*.md")):
+            name = re.sub(r"\s+\(\d+\)$", "", md.stem)
+
+            candidate_url = None
+            for pat in patterns:
+                for rel in _candidates_from_pattern(name, pat):
+                    if rel.lower().endswith(".pdf"):
+                        continue  # Chrome dumps rendered DOM, not binary PDFs.
+                    candidate_url = base_url.rstrip("/") + "/" + rel.lstrip("/")
+                    dom = _render_via_chrome(candidate_url)
+                    if dom:
+                        break
+                    candidate_url = None
+                if candidate_url:
+                    break
+
+            if not candidate_url:
+                continue
+
+            external_md = to_md(dom)
+            if not external_md:
+                continue
+
+            _update_md(md, external_md, candidate_url)
+            print(f"    + {md.relative_to(out_dir)} <- {candidate_url}  (Chrome-rendered)")
+            n += 1
+        print(f"  enriched {n} assignments via Chrome render fallback")
+        return n
 
     def _match_and_embed(self, course_root: Path, base_url: str, out_dir: Path, patterns: list[dict]) -> int:
         n = 0

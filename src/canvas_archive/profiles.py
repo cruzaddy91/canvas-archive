@@ -20,7 +20,7 @@ def load_profile(canvas_id: int) -> dict[str, Any]:
         try:
             data = yaml.safe_load(path.read_text()) or {}
         except yaml.YAMLError as e:
-            raise SystemExit(f"invalid YAML in {path}: {e}")
+            raise SystemExit(f"invalid YAML in {path}: {e}") from e
         if data.get("canvas_id") == canvas_id:
             data.setdefault("strategy", "canvas_only")
             data["_profile_path"] = str(path)

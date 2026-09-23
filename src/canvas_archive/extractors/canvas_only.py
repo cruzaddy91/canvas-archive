@@ -19,7 +19,6 @@ from ..core.slug import dir_slug, slug
 from ..observability import StepTimer, log_event
 from .base import ExtractResult, reset_dir, write_text
 
-
 PLACEHOLDER = "_No description provided in Canvas._"
 
 _APPENDIX_MARKERS = (

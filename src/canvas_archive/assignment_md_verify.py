@@ -33,6 +33,20 @@ def verify_assignment_markdown(local_dir: Path) -> list[str]:
     return issues
 
 
+def verify_not_empty(assignments_written: int) -> list[str]:
+    """Flag a run that wrote zero assignment files.
+
+    A silently empty extraction was the actual failure mode behind "sometimes
+    the assignments or data pulls nothing": nothing previously checked for
+    it, so a course with a broken profile or an unreachable external site
+    would report success with nothing to show for it. This makes that loud
+    instead of quiet.
+    """
+    if assignments_written == 0:
+        return ["extraction wrote 0 assignment files (see the strategy's own log above for why)"]
+    return []
+
+
 def exit_if_assignment_md_issues(local_dir: Path) -> None:
     problems = verify_assignment_markdown(local_dir)
     if problems:

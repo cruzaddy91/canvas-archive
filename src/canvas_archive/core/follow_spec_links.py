@@ -17,7 +17,7 @@ MAX_RESPONSE_BYTES = 2 * 1024 * 1024
 USER_AGENT = "canvas-archive/personal-student-archive (private course archive)"
 
 
-class FetchSkipped403(Exception):
+class FetchSkipped403Error(Exception):
     """URL is in the 403 cache; caller should not append an error note or retry."""
 
 
@@ -89,7 +89,7 @@ def _canvas_plaintext_len(raw_html: str) -> int:
 
 def fetch_page_as_markdown(url: str) -> str:
     if is_forbidden_cached(url):
-        raise FetchSkipped403(url)
+        raise FetchSkipped403Error(url)
     req = Request(url, headers={"User-Agent": USER_AGENT})
     with urlopen(req, timeout=60) as resp:
         chunk = resp.read(MAX_RESPONSE_BYTES + 1)
@@ -150,7 +150,7 @@ def append_followed_spec(
 
     try:
         ext_md = fetch_page_as_markdown(url)
-    except FetchSkipped403:
+    except FetchSkipped403Error:
         return body, False
     except HTTPError as e:
         if e.code == 403:
@@ -173,7 +173,7 @@ def append_followed_spec(
 
 
 __all__ = [
-    "FetchSkipped403",
+    "FetchSkipped403Error",
     "append_followed_spec",
     "fetch_page_as_markdown",
     "first_allowlisted_http_url",

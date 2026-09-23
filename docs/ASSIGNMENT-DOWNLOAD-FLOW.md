@@ -1,6 +1,9 @@
-# Scratch: assignment starter file extraction (delete when stable)
+# Assignment starter file extraction
 
-This note is only to visualize **where downloaded assignment-related files come from**. Remove this file once behavior is confirmed or folded into the main runbook.
+How downloaded assignment-related files (Canvas file attachments, instructor-host
+starters) actually get found and written, for the `canvas_only` strategy. The main
+[runbook](CANVAS_ARCHIVE_RUNBOOK.md) covers the profile flags that turn this on;
+this doc is the flow those flags drive.
 
 ## What “assignment download files” means here
 

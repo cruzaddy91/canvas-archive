@@ -4,15 +4,13 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from urllib.parse import unquote
-
 from typing import Any
+from urllib.parse import unquote
 
 from canvasapi.exceptions import CanvasException, ResourceDoesNotExist
 
 from .canvas import get_canvas
 from .slug import slug
-
 
 # Match course file URLs in rich content (absolute or scheme-relative).
 _FILE_URL_RE = re.compile(

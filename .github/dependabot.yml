@@ -1,0 +1,17 @@
+# Dependabot keeps dependencies and Action versions current without anyone
+# remembering to check. Weekly rather than daily: this runs on demand a few
+# times a term, not continuously, and a daily PR stream would be noise.
+#
+# github-actions is listed regardless of language. Pinned action versions
+# (actions/checkout@v4 and friends) go stale silently and are the most
+# common reason a workflow starts warning about deprecated runtimes.
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"

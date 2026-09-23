@@ -3,18 +3,16 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from pathlib import Path
 
 import yaml
 
+from .assignment_md_verify import exit_if_assignment_md_issues
 from .core.canvas import get_canvas
 from .core.git_ops import push_and_verify
-from .assignment_md_verify import exit_if_assignment_md_issues
 from .pipeline import (
-    EXTRACTS_ROOT,
     local_archive_path,
-    run_pipeline,
     resolve_meta,
+    run_pipeline,
     sync_tfvars_from_profiles,
     terraform_apply,
     terraform_init,

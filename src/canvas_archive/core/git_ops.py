@@ -30,7 +30,7 @@ def commit_if_changes(local_dir: Path, message: str) -> bool:
     if diff.returncode == 0:
         print("  No changes to commit.")
         return False
-    full = f"{message}\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
+    full = f"{message}\n\nCo-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
     run(["git", "commit", "-m", full], cwd=local_dir)
     return True
 

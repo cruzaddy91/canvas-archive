@@ -1,0 +1,38 @@
+# Gold-tier requirement: the workspace audit looks for a workflow whose filename
+# contains `security`, `codeql`, or `scan`.
+name: CodeQL
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Weekly. A newly disclosed pattern gets caught without needing a push, which
+    # matters on a repo that can sit untouched between school terms.
+    - cron: "0 6 * * 1"
+
+# No paths-ignore on purpose. A credential can sit in a Markdown file as easily
+# as in source, so the scanner sees every commit. Superseded runs are cancelled
+# because analysing stale code bills for nothing.
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: python
+
+      - name: Analyze
+        uses: github/codeql-action/analyze@v3

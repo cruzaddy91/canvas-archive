@@ -9,8 +9,8 @@ from typing import Any
 
 import yaml
 
+from .assignment_md_verify import verify_assignment_markdown, verify_not_empty
 from .core.canvas import get_canvas, parse_course
-from .core.profile_lockdown import validate_profile_security_flags
 from .core.git_ops import (
     capture,
     clone_or_pull,
@@ -19,7 +19,7 @@ from .core.git_ops import (
     push_and_verify,
     run,
 )
-from .assignment_md_verify import verify_assignment_markdown
+from .core.profile_lockdown import validate_profile_security_flags
 from .extractors import get_strategy
 from .observability import StepTimer, log_event
 from .profiles import find_profile_by_id, list_profiles
@@ -232,7 +232,7 @@ def run_pipeline(canvas_id: int, push: bool = False) -> None:
     print(f"  result: {result.summary()}")
 
     print("\n[5/7] Verify assignment Markdown")
-    md_issues = verify_assignment_markdown(local_dir)
+    md_issues = verify_assignment_markdown(local_dir) + verify_not_empty(result.assignments_written)
     if md_issues:
         for line in md_issues:
             print(f"  [FAIL] {line}")
